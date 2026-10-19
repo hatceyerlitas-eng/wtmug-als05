@@ -5,6 +5,7 @@ const statusDiv = document.getElementById('status');
 const ocrResultDiv = document.getElementById('ocrResult');
 const translatedResultDiv = document.getElementById('translatedResult');
 const targetLangSelect = document.getElementById('targetLang');
+const ocrHeader = document.getElementById('ocrHeader');
 
 // Kamera Başlatma
 async function initCamera() {
@@ -57,10 +58,11 @@ async function ocrVeCevir(imageSource) {
     statusDiv.textContent = "Görseldeki metin okunuyor (Cihaz içi OCR)...";
     ocrResultDiv.textContent = "...";
     translatedResultDiv.textContent = "...";
+    if (ocrHeader) ocrHeader.textContent = "Algılanan Metin (OCR):";
 
     try {
         // Tesseract.js cihaz içi OCR çalıştırır
-        const worker = await Tesseract.createWorker('eng+tur+deu+fra+ita+spa'); // Çoklu dil OCR desteği
+        const worker = await Tesseract.createWorker('eng+tur+deu+fra+ita+spa');
         const ret = await worker.recognize(imageSource);
         await worker.terminate();
 
@@ -83,11 +85,22 @@ async function ocrVeCevir(imageSource) {
     }
 }
 
-// Uzun metinleri 500 karakter sınırına takılmadan parçalayarak çeviren fonksiyon
+// Dil kodlarını okunabilir Türkçe isimlere çeviren tablo
+const dilIsimleri = {
+    'fr': 'Fransızca',
+    'de': 'Almanca',
+    'it': 'İtalyanca',
+    'en': 'İngilizce',
+    'es': 'İspanyolca',
+    'tr': 'Türkçe',
+    'ru': 'Rusça'
+};
+
+// Uzun metinleri parçalayarak çeviren ve algılanan dili başlığa yazan fonksiyon
 async function metniCevir(metin) {
     const targetLang = targetLangSelect.value;
     
-    // Metni cümlelere/noktalara göre parçala
+    // Metni cümlelere/parçalara böl (500 karakter sınırını aşmamak için)
     const cumleler = metin.match(/[^.!?]+[.!?]+/g) || [metin];
     let parcalar = [];
     let mevcutParca = "";
@@ -106,17 +119,29 @@ async function metniCevir(metin) {
 
     try {
         let ceviriSonuclari = [];
+        let algilananDilKodu = "";
 
         for (let parca of parcalar) {
             const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(parca)}&langpair=Autodetect|${targetLang}`;
             const response = await fetch(apiUrl);
             const data = await response.json();
 
+            // İlk parçadan tespit edilen kaynak dili al
+            if (!algilananDilKodu && data.responseData && data.responseData.detectedLanguage) {
+                algilananDilKodu = data.responseData.detectedLanguage.toLowerCase();
+            }
+
             if (data.responseData && data.responseData.translatedText) {
                 ceviriSonuclari.push(data.responseData.translatedText);
             } else {
-                ceviriSonuclari.push(parca); // Çevrilemezse parçayı koru
+                ceviriSonuclari.push(parca);
             }
+        }
+
+        // Başlıkta tespit edilen dili göster
+        if (ocrHeader) {
+            const dilAdi = dilIsimleri[algilananDilKodu] || (algilananDilKodu ? algilananDilKodu.toUpperCase() : "Tespit Edildi");
+            ocrHeader.textContent = `Algılanan Metin (OCR) [Algılanan Dil: ${dilAdi}]:`;
         }
 
         translatedResultDiv.textContent = ceviriSonuclari.join(" ");
@@ -139,7 +164,7 @@ function elleCevir() {
     metniCevir(text);
 }
 
-// Service Worker Kaydı (PWA Kurulabilirliği için)
+// Service Worker Kaydı
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.log("SW hatası:", err));
 }
