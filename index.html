@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kamera Çevirmeni</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <!-- Cihaz içi OCR için Tesseract.js -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 15px; background: #f0f2f5; color: #333; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #1976D2; font-size: 22px; margin-top: 0; }
+        .lang-select { margin-bottom: 15px; text-align: center; }
+        select { padding: 8px 12px; font-size: 15px; border-radius: 6px; border: 1px solid #ccc; width: 100%; max-width: 250px; }
+        
+        .media-box { position: relative; width: 100%; height: 260px; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        video, img { width: 100%; height: 100%; object-fit: cover; }
+        #canvas { display: none; }
+
+        .btn-group { display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; }
+        button, label.btn { flex: 1; min-width: 120px; padding: 10px; background: #1976D2; color: white; border: none; border-radius: 6px; font-size: 14px; text-align: center; cursor: pointer; font-weight: 600; display: inline-block; }
+        button:disabled { background: #b0bec5; }
+        input[type="file"] { display: none; }
+
+        .text-area { margin-top: 15px; }
+        textarea { width: 100%; height: 70px; padding: 8px; border-radius: 6px; border: 1px solid #ccc; resize: none; font-size: 14px; }
+
+        .result-box { margin-top: 15px; padding: 12px; background: #e3f2fd; border-left: 4px solid #1976D2; border-radius: 4px; }
+        .status { text-align: center; font-size: 13px; color: #666; margin-top: 8px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Kamera Çevirmeni</h1>
+
+    <!-- Çevrilecek Hedef Dil Seçimi -->
+    <div class="lang-select">
+        <label for="targetLang"><b>Çeviri Dili: </b></label>
+        <select id="targetLang">
+            <option value="tr" selected>Türkçe</option>
+            <option value="en">İngilizce</option>
+            <option value="de">Almanca</option>
+            <option value="fr">Fransızca</option>
+            <option value="es">İspanyolca</option>
+            <option value="it">İtalyanca</option>
+            <option value="ru">Rusça</option>
+        </select>
+    </div>
+
+    <!-- Kamera / Görsel Önizleme Alanı -->
+    <div class="media-box">
+        <video id="video" autoplay playsinline></video>
+        <img id="imagePreview" style="display:none;">
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <div id="status" class="status">Kamera hazırlanıyor...</div>
+
+    <!-- İşlem Butonları -->
+    <div class="btn-group">
+        <button id="btnCapture" onclick="yakalaVeCevir()">Yakala & Çevir</button>
+        <label for="fileInput" class="btn">Galeriden Seç</label>
+        <input type="file" id="fileInput" accept="image/*" onchange="galeridenYukle(event)">
+    </div>
+
+    <!-- Elle Metin Girişi -->
+    <div class="text-area">
+        <textarea id="manualText" placeholder="Veya buraya elle metin yazıp çevirin..."></textarea>
+        <button style="width:100%; margin-top:5px;" onclick="elleCevir()">Metni Çevir</button>
+    </div>
+
+    <!-- Sonuç Alanı -->
+    <div class="result-box">
+        <div><strong>Algılanan Metin (OCR):</strong></div>
+        <div id="ocrResult" style="color:#555; margin-bottom:8px; font-style:italic;">-</div>
+        <div><strong>Çeviri:</strong></div>
+        <div id="translatedResult" style="font-size:16px; font-weight:bold; color:#0d47a1;">-</div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
