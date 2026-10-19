@@ -60,7 +60,7 @@ async function ocrVeCevir(imageSource) {
 
     try {
         // Tesseract.js cihaz içi OCR çalıştırır
-        const worker = await Tesseract.createWorker('eng+tur'); // Çoklu dil OCR desteği
+        const worker = await Tesseract.createWorker('eng+tur+deu+fra+ita+spa'); // Çoklu dil OCR desteği
         const ret = await worker.recognize(imageSource);
         await worker.terminate();
 
@@ -83,23 +83,45 @@ async function ocrVeCevir(imageSource) {
     }
 }
 
-// Ücretsiz & API Key İstemeyen Çeviri Servisi (MyMemory API)
+// Uzun metinleri 500 karakter sınırına takılmadan parçalayarak çeviren fonksiyon
 async function metniCevir(metin) {
     const targetLang = targetLangSelect.value;
-    // MyMemory API: 'AUTODETECT' desteği ile otomatik kaynak dil tanıma
-    const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(metin)}&langpair=Autodetect|${targetLang}`;
+    
+    // Metni cümlelere/noktalara göre parçala
+    const cumleler = metin.match(/[^.!?]+[.!?]+/g) || [metin];
+    let parcalar = [];
+    let mevcutParca = "";
+
+    for (let cumle of cumleler) {
+        if ((mevcutParca + cumle).length < 350) {
+            mevcutParca += " " + cumle;
+        } else {
+            if (mevcutParca.trim()) parcalar.push(mevcutParca.trim());
+            mevcutParca = cumle;
+        }
+    }
+    if (mevcutParca.trim()) parcalar.push(mevcutParca.trim());
+
+    translatedResultDiv.textContent = "Çeviriler birleştiriliyor...";
 
     try {
-        const response = await fetch(apiUrl);
-        const data = await response.json();
+        let ceviriSonuclari = [];
 
-        if (data.responseData && data.responseData.translatedText) {
-            translatedResultDiv.textContent = data.responseData.translatedText;
-            statusDiv.textContent = "İşlem Tamamlandı";
-        } else {
-            translatedResultDiv.textContent = "Çeviri yapılamadı.";
-            statusDiv.textContent = "Çeviri Hatası";
+        for (let parca of parcalar) {
+            const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(parca)}&langpair=Autodetect|${targetLang}`;
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+
+            if (data.responseData && data.responseData.translatedText) {
+                ceviriSonuclari.push(data.responseData.translatedText);
+            } else {
+                ceviriSonuclari.push(parca); // Çevrilemezse parçayı koru
+            }
         }
+
+        translatedResultDiv.textContent = ceviriSonuclari.join(" ");
+        statusDiv.textContent = "İşlem Tamamlandı";
+
     } catch (err) {
         console.error(err);
         translatedResultDiv.textContent = "Çeviri servisine ulaşılamadı.";
